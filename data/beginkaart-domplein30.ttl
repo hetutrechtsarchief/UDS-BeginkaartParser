@@ -1,0 +1,19 @@
+@prefix sdo: <https://schema.org/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix trefwoord: <http://documentatie.org/id/trefwoord/> .
+@prefix def: <http://documentatie.org/def/> .
+@prefix page: <http://documentatie.org/id/pagina/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<http://www.documentatie.org/data/plpr/BEKA/BPU--/BPU-d/Utrecht%20-%20Domplein%2030%20_beginkaart%20[0000.1001].htm>
+  a sdo:Article ;
+  rdfs:label "Kloostergang van de Dom, Utrecht (Domplein 30)" ;
+  sdo:articleBody "Het bekendste van de rustige plekjes van Utrecht is de gotische <a href='http://documentatie.org/id/trefwoord/kloostergang'>kloostergang</a> van de Dom, ook Pandhof <em>genoemd</em>. Zoals in Utrecht gebruikelijk, heeft deze drie armen; langs de Domkerk zelf loopt geen gang. De oostelijke en zuidelijke gang zijn uit 1395-1400, de westelijke volgde in 1440-1460. De kloostergang heeft tal van functies gekend. Lang waren glas-in-loodramen geplaatst in de traceringen. Deze zijn, samen met de wimbergen erboven, bijna allemaal vervangen bij de restauraties van 1876 en 1958. De bekende touw-tracering is de meest bijzondere en gelukkig nog wel origineel. Ook de blindtraceringen aan de blinde kant zijn oorspronkelijk. De kloostergang verbondt de kerk met de belangrijkste gebouwen van het kapittel. Bij de opening van het academisch jaar roept de stoet hoogleraren de oude sfeer weer op, wanneer deze van de kerk naar de aula schreidt. Die zaal was oorspronkelijk de kapittelzaal van de Dom. De kruidentuin, verzorgd door vrijwilligers, is er niet altijd geweest. De fontein, met het beeld van een monnik, is het werk van de Utrechtse edelsmid Brom. De bekendste bouwmeester van de kerk, Jan van den Doem, wordt geëerd met een standbeeld." ;
+  def:linksTo trefwoord:kloostergang , trefwoord:utrecht-domplein-dom , trefwoord:utrecht-domplein-31 ;
+  foaf:depiction <http://www.documentatie.org/B/BPU-/PU--d/Utrecht%20-%20Domplein%2030.jpg> ;
+  def:volgnummer "0000.1001" ;
+  sdo:author "Tekst: Jean Penders, 05-2005. Bronnen: zie literatuurlijst. Foto: Jean Penders" ;
+  def:imageDetailsPage page:10767 ;
+  def:partOf trefwoord:utrecht-domplein-30 .
+
+
