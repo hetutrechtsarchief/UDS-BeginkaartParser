@@ -5,75 +5,109 @@ import json,sys,os,argparse,time,re
 from html.parser import HTMLParser
 import logging
 import urllib.request
+import urllib.parse
+
+def makeSafeURIPart(s):
+  s = re.sub(r"[–’+?&=|,\.() \"$/']", "-", s) # replace different characters by a dash
+  s = re.sub(r"-+", "-", s) # replace multiple dashes by 1 dash
+  s = re.sub(r"[^a-zA-Z0-9\-]", "", s) # strip anything else now that is not a alpha or numeric character or a dash
+  s = re.sub(r"^-|-$", "", s) # prevent starting or ending with . or -
+  if len(s)==0:
+    s="x"
+  return s.lower()
+
+def makeSafeLiteral(s):
+  return re.sub(r"\"", "\\\"", s) # replace " quote by ""
 
 class Parse(HTMLParser):
-
-  def handle_comment(self, data):
-    global weEnteredTheText
-
-    if data.find("einde tekst")>-1:
-      weEnteredTheText = False
-
+      
   def handle_starttag(self, name, attrs):
-    global obj, weEnteredTheText, weEnteredTheLabel
+    global obj, isText, isLabel, isImage, isAuthor
 
-    if name=="div":
-      for k,v in attrs:
-        if (k=="id" and v=="tekst"):
-          weEnteredTheText = True
-          weEnteredTheLabel = True
+    for k,v in attrs:
+      if name=="div" and k=="id" and v=="tekst":
+        isText = True
+        isLabel = True
+
+      if name=="div" and k=="id" and v=="plaatje":
+        isImage = True
+
+      if isImage and name=="img" and k=="src":
+        obj["image"] = v
+        isImage = False
+
+      if name=="a" and k=="href":
+        m = re.findall(r"/uds4/zoekpagina5a\.asp\?id=(.*)", v) 
+        for r in m:
+          obj["imageDetailsPage"] = r
+
+        if not obj["imageDetailsPage"]: # different link for example at: utrecht-domplein-18-gesloopt-1938
+          m = re.findall(r"/idUDSpagina\.asp\?id=(.*)", v) 
+          for r in m:
+            obj["imageDetailsPage"] = r
+
+        m = re.findall(r"/uds4/zoekpagina3t\.asp\?search=(.*)", v.lower()) 
+        for r in m:
+          obj["mainTopic"] = makeSafeURIPart(r)
+
+        m = re.findall(r"/uds4/zoekpagina3\.asp\?search=(.*)", v.lower()) # sometimes UDS4 is with capitals
+        for r in m:
+          obj["otherTopics"].append("trefwoord:"+makeSafeURIPart(r))
+
+      if name=="span" and k=="id" and v=="auteur":
+        isText = False
+        isAuthor = True
+
+        # finalize articleBody
+        obj["articleBody"] = re.sub(r"\s+", " ", obj["articleBody"]).strip()
+        obj["articleBody"] = re.sub(r" \.", ".", obj["articleBody"])
+        obj["articleBody"] = re.sub(r" \,", ",", obj["articleBody"])
+        obj["articleBody"] = makeSafeLiteral(obj["articleBody"])
 
     if name=="br":
-      if weEnteredTheLabel:
-        obj["label"] = re.sub(r"\s+", " ", obj["label"]).strip()  # replace multiple dashes by 1 dash
+      if isLabel:
+        obj["label"] = makeSafeLiteral(re.sub(r"\s+", " ", obj["label"]).strip())  # replace multiple dashes by 1 dash
 
-        weEnteredTheLabel = False
+        isLabel = False
 
 
   def handle_data(self, data):
-    global obj, weEnteredTheText
+    global obj, isLabel, isText, isAuthor
 
-    if weEnteredTheLabel:
+    if isLabel:
       obj["label"] = obj["label"] + " " + data.strip()
+
+    elif isText:
+      obj["articleBody"] = obj["articleBody"] + " " + data.strip()      
+
+    elif isAuthor:
+      obj["author"] = makeSafeLiteral((obj["author"] + " " + data.strip()).strip())
+
+      if obj["author"]: # done
+        isAuthor = False 
 
 ####################################################
 
 # parse command line parameters/arguments
 argparser = argparse.ArgumentParser(description='UDS Image Area parser')
-# argparser.add_argument('--url',help='input URL for example: <http://www.documentatie.org/data/plpr/BEKA/BPU--/BPU-d/Utrecht%20-%20Domplein%2031%20_beginkaart%20[0000.1001].htm>', required=True)
 argparser.add_argument('--html',help='input html file', required=True)
-argparser.add_argument('--originalURL',help='original URL used as identifier for the article', required=True)
+# argparser.add_argument('--originalURL',help='original URL used as identifier for the article', required=True)
 args = argparser.parse_args()
 
 obj = {
   "label": "",
-  "articleBody": ""
+  "articleBody": "",
+  "image": "" ,
+  "imageDetailsPage": "",
+  "mainTopic": "", # the main topic this kaart belongs to
+  "author": "",
+  "otherTopics": []
 }
 
-weEnteredTheText = False
-weEnteredTheLabel = False
-
-# load data from URL
-# with urllib.request.urlopen(args.url) as response:
-  # html = response.read()
-
-# response = urllib.request.urlopen(args.url)
-
-# lines = response.readlines()
-
-# lines = lines.decode("utf-8")
-
-# for line in lines:
-#   print(line)
-
-
-
-# # open xml file and read lines
-# with open(args.html, 'r') as file:
-#   for line in file:
-#     xml = Parse()
-#     xml.feed(line)
-
+isText = False
+isLabel = False
+isImage = False
+isAuthor = False
 
 # open xml file and read lines
 with open(args.html, 'r') as file:
@@ -81,14 +115,19 @@ with open(args.html, 'r') as file:
     xml = Parse()
     xml.feed(line)
 
-print("@prefix sdo: <https://schema.org/> .")
-print("@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .")
-print("@prefix trefwoord: <http://documentatie.org/id/trefwoord/> .")
-print("@prefix def: <http://documentatie.org/def/> .")
-print("@prefix page: <http://documentatie.org/id/pagina/> .")
-print("@prefix foaf: <http://xmlns.com/foaf/0.1/> .")
-print()
-print("<"+args.originalURL+">")
-print("  a sdo:Article ;")
-print(f"  rdfs:label \"{obj['label']}\"")
+obj['otherTopics'] = " , ".join(obj['otherTopics'])
+obj['image'] = urllib.parse.quote(obj['image'])
+
+if obj["mainTopic"]:
+  print(f"trefwoord:{obj['mainTopic']} def:hasBeginkaart [")   # blank node [ ]
+  print(f"  a sdo:Article ;")
+  print(f"  rdfs:label \"{obj['label']}\" ; ")
+  print(f"  sdo:articleBody \"{obj['articleBody']}\" ;")
+  print(f"  foaf:depiction <{obj['image']}> ;") 
+  print(f"  def:imageDetailsPage page:{obj['imageDetailsPage']} ;")
+  print(f"  def:mainTopic trefwoord:{obj['mainTopic']} ;")
+  print(f"  sdo:author \"{obj['author']}\" ; ")
+  # if obj["otherTopics"]:
+  print(f"  def:otherTopics {obj['otherTopics']} ] .")
+  print()
 
